@@ -1,4 +1,4 @@
-# blobGame-RL
+# checkers-RL
 
 ## UML Diagrams
 
