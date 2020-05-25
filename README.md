@@ -2,17 +2,18 @@
 
 ## UML Diagrams
 
-# Use Case Diagram
+### Use Case Diagram
 ![](images/useDiagram.png)
 
-# Class Diagram
+### Class Diagram
 ![](images/classDiagram.png)
 
-# Interaction Diagram
+### Interaction Diagram
 ![](images/interactionDiagram.png)
 
 ## Authors
 Tristan Shah
+Blade Nelson
 
 ## Credits
 Reinforcement Learning: 
