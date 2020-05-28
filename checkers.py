@@ -16,6 +16,10 @@ SIZE = 8
 
 CAPTURE_REWARD = 1
 
+mark = {
+	'red':1,
+	'black':-1}
+
 class Checkers():
 	def __init__(self):
 		## Array representing board
@@ -35,12 +39,12 @@ class Checkers():
 		for y in range(0, 3):
 			for x in range(SIZE):
 				if (x + y)%2 == 0:
-					self.board[y,x] = 1
+					self.board[y, x] = mark['red']
 		## place black
 		for y in range(5, SIZE):
 			for x in range(SIZE):
 				if (x + y)%2 == 0:
-					self.board[y,x] = -1
+					self.board[y, x] = mark['black']
 
 	## Generates list of tuples for each peice position of 
 	# each color
@@ -49,13 +53,16 @@ class Checkers():
 		self.black = []
 		for y in range(SIZE):
 			for x in range(SIZE):
-				if self.board[y, x] == 1:
+				if self.board[y, x] == mark['red']:
 					self.red.append((y, x))
-				elif self.board[y, x] == -1:
+				elif self.board[y, x] == mark['black']:
 					self.black.append((y, x))
 				else:
 					pass
 
+	## Re makes board
+	## Places peices in correct starting position
+	## Generates list of positions of each color peice
 	def reset(self):
 		self.set_board()
 		self.place_peices()
@@ -71,10 +78,30 @@ class Checkers():
 	def coord_to_int(self, coord):
 		return coord[0] * SIZE + coord[1]
 
+	## Takes two coordinates
+	## Returns midpoint
 	def midpoint(self, coord1, coord2):
 		y_diff = int(abs(coord1[0] + coord2[0])/2)
 		x_diff = int(abs(coord1[1] + coord2[1])/2)
 		return (y_diff, x_diff)
+
+	def was_capture(self, start_coord, end_coord):
+		y_diff = start_coord[0] - end_coord[0]
+		x_diff = start_coord[1] - end_coord[1]
+		if y_diff > 1 or x_diff > 1:
+			return True
+		return False
+
+	def capture(self, color, start_coord, end_coord, midpoint):
+		midpoint_peice = self.board[midpoint]
+		self.board[midpoint] = 0
+		if color == 'red':
+			idx = self.black.index(midpoint)
+			self.black.pop(idx)
+		elif color == 'black':
+			idx = self.red.index(midpoint)
+			self.red.pop(idx)
+		return CAPTURE_REWARD
 
 	## Takes a peice from start_pos (int)
 	## Moves it to end_pos (int)
@@ -84,32 +111,28 @@ class Checkers():
 		end_coord = self.int_to_coord(end_pos)
 		midpoint = self.midpoint(start_coord, end_coord)
 
+		## Move peice
 		peice = self.board[start_coord]
 		self.board[start_coord] = 0
 		self.board[end_coord] = peice
 
+		## Update position in list
 		if color == 'red':
 			idx = self.red.index(start_coord)
 			self.red[idx] = end_coord
-			if start_coord != midpoint and end_coord != midpoint:
-				midpoint_peice = self.board[midpoint]
-				if midpoint_peice == -1:
-					self.board[midpoint] = 0
-					midpoint_idx = self.black.index(midpoint)
-					self.black.pop(midpoint_idx)
-					reward = CAPTURE_REWARD
-
-		if color == 'black':
+		elif color == 'black':
 			idx = self.black.index(start_coord)
 			self.black[idx] = end_coord
-			if start_coord != midpoint and end_coord != midpoint:
-				midpoint_peice = self.board[midpoint]
-				if midpoint_peice == 1:
-					self.board[midpoint] = 0
-					midpoint_idx = self.red.index(midpoint)
-					self.red.pop(midpoint_idx)
-					reward = CAPTURE_REWARD
+
+		## If move resulted in a capture, update list and return reward
+		reward = 0
+		if self.was_capture(start_coord, end_coord):
+			reward = self.capture(color, start_coord, end_coord, midpoint)
 		return reward
+
+	## Returns board as vector
+	def get_state(self):
+		return self.board.flatten()
 
 	## Generates and returns possible next move
 	# for specified color
@@ -141,3 +164,5 @@ if __name__ == "__main__":
 	print(env.board)
 	env.move('black', env.coord_to_int((4, 2)), env.coord_to_int((2, 0)))
 	print(env.board)
+	print(env.red)
+	print(env.black)
