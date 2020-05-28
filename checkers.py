@@ -1,15 +1,20 @@
 import numpy as np
 
+## Board size is an 8 * 8 grid
 SIZE = 8
 
-## May use Peice class instead of int to represent peices
-class Peice():
-	def __init__(self, color, y, x, dead=False):
-		self.color = color
-		self.dead = dead
-		self.y = y
-		self.x = x
-		self.crowned = False
+"""
+[[ 1.  0.  1.  0.  1.  0.  1.  0.]
+ [ 0.  1.  0.  1.  0.  1.  0.  1.]
+ [ 1.  0.  1.  0.  1.  0.  1.  0.]
+ [ 0.  0.  0.  0.  0.  0.  0.  0.]
+ [ 0.  0.  0.  0.  0.  0.  0.  0.]
+ [ 0. -1.  0. -1.  0. -1.  0. -1.]
+ [-1.  0. -1.  0. -1.  0. -1.  0.]
+ [ 0. -1.  0. -1.  0. -1.  0. -1.]]
+ """
+
+CAPTURE_REWARD = 1
 
 class Checkers():
 	def __init__(self):
@@ -66,12 +71,18 @@ class Checkers():
 	def coord_to_int(self, coord):
 		return coord[0] * SIZE + coord[1]
 
+	def midpoint(self, coord1, coord2):
+		y_diff = int(abs(coord1[0] + coord2[0])/2)
+		x_diff = int(abs(coord1[1] + coord2[1])/2)
+		return (y_diff, x_diff)
+
 	## Takes a peice from start_pos (int)
 	## Moves it to end_pos (int)
 	## Returns reward
 	def move(self, color, start_pos, end_pos):
 		start_coord = self.int_to_coord(start_pos)
 		end_coord = self.int_to_coord(end_pos)
+		midpoint = self.midpoint(start_coord, end_coord)
 
 		peice = self.board[start_coord]
 		self.board[start_coord] = 0
@@ -80,11 +91,28 @@ class Checkers():
 		if color == 'red':
 			idx = self.red.index(start_coord)
 			self.red[idx] = end_coord
+			if start_coord != midpoint and end_coord != midpoint:
+				midpoint_peice = self.board[midpoint]
+				if midpoint_peice == -1:
+					self.board[midpoint] = 0
+					midpoint_idx = self.black.index(midpoint)
+					self.black.pop(midpoint_idx)
+					reward = CAPTURE_REWARD
 
 		if color == 'black':
 			idx = self.black.index(start_coord)
 			self.black[idx] = end_coord
+			if start_coord != midpoint and end_coord != midpoint:
+				midpoint_peice = self.board[midpoint]
+				if midpoint_peice == 1:
+					self.board[midpoint] = 0
+					midpoint_idx = self.red.index(midpoint)
+					self.red.pop(midpoint_idx)
+					reward = CAPTURE_REWARD
+		return reward
 
+	## Generates and returns possible next move
+	# for specified color
 	def get_possible_moves(self, color):
 		raise NotImplementedError
 
@@ -102,4 +130,14 @@ class Checkers():
 
 if __name__ == "__main__":
 	env = Checkers()
+
+	## Testing functions:
+	print(env.board)
+	env.move('red', env.coord_to_int((2, 0)), env.coord_to_int((3, 1)))
+	print(env.board)
+	env.move('black', env.coord_to_int((5, 1)), env.coord_to_int((4, 2)))
+	print(env.board)
+	env.move('red', env.coord_to_int((2, 4)), env.coord_to_int((3, 5)))
+	print(env.board)
+	env.move('black', env.coord_to_int((4, 2)), env.coord_to_int((2, 0)))
 	print(env.board)
