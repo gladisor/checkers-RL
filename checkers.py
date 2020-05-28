@@ -130,10 +130,6 @@ class Checkers():
 			reward = self.capture(color, start_coord, end_coord, midpoint)
 		return reward
 
-	## Returns board as vector
-	def get_state(self):
-		return self.board.flatten()
-
 	## Generates and returns possible next move
 	# for specified color
 	def get_possible_moves(self, color):
@@ -145,24 +141,50 @@ class Checkers():
 	def close(self):
 		raise NotImplementedError
 
-	## Takes in an action (tuple)
+	## Takes in color, action: string, (peice at position, position to move to)
 	## Executes action
-	## Returns next_state, reward, done (np.array, int, bool)
-	def step(self, action):
-		raise NotImplementedError
+	## Returns next_state, reward for each player, done (np.array, int, bool)
+	def step(self, color, action):
+		reward = self.move(color, action[0], action[1])
+		done = False
+		state = self.board
+		return state, reward, done
 
 if __name__ == "__main__":
 	env = Checkers()
 
+	players = ['red', 'black']
+	print(env.board)
+	done = False
+	while not done:
+		for player in players:
+			print(f"{player}'s turn!")
+			start_y = int(input("Enter y coord of peice: "))
+			start_x = int(input("Enter x coord of peice: "))
+			end_y = int(input("Enter y coord of loc: "))
+			end_x = int(input("Enter x coord of loc: "))
+
+			peice = env.coord_to_int((start_y, start_x))
+			loc = env.coord_to_int((end_y, end_x))
+			action = (peice, loc)
+
+			env.step(player, action)
+			print(env.board)
+
+	### Uncomment this block to test move function
 	## Testing functions:
-	print(env.board)
-	env.move('red', env.coord_to_int((2, 0)), env.coord_to_int((3, 1)))
-	print(env.board)
-	env.move('black', env.coord_to_int((5, 1)), env.coord_to_int((4, 2)))
-	print(env.board)
-	env.move('red', env.coord_to_int((2, 4)), env.coord_to_int((3, 5)))
-	print(env.board)
-	env.move('black', env.coord_to_int((4, 2)), env.coord_to_int((2, 0)))
-	print(env.board)
-	print(env.red)
-	print(env.black)
+	# print(env.board)
+	# env.move('red', env.coord_to_int((2, 0)), env.coord_to_int((3, 1)))
+	# print(env.board)
+	# env.move('black', env.coord_to_int((5, 1)), env.coord_to_int((4, 2)))
+	# print(env.board)
+	# env.move('red', env.coord_to_int((2, 4)), env.coord_to_int((3, 5)))
+	# print(env.board)
+	# env.move('black', env.coord_to_int((4, 2)), env.coord_to_int((2, 0)))
+	# print(env.board)
+	# env.move('red', env.coord_to_int((2, 2)), env.coord_to_int((3, 1)))
+	# print(env.board)
+	# env.move('black', env.coord_to_int((5, 3)), env.coord_to_int((4, 2)))
+	# print(env.board)
+	# env.move('red', env.coord_to_int((3, 1)), env.coord_to_int((5, 3)))
+	# print(env.board)
