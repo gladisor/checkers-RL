@@ -1,5 +1,9 @@
 # checkers-RL
 
+## Description
+
+This project is my attempt to create an AI that will be able to beat humans at the game of checkers.
+
 ## UML Diagrams
 
 ### Use Case Diagram
