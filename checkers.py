@@ -2,14 +2,22 @@ import numpy as np
 
 SIZE = 8
 
+class Peice():
+	def __init__(self, color, y, x, dead=False):
+		self.color = color
+		self.dead = dead
+		self.y = y
+		self.x = x
+
 class Checkers():
 	def __init__(self):
-		self.board = self.set_board()
-		self.place_peices()
+		self.board = None
+		self.reset()
 
 	def set_board(self):
 		return np.zeros((SIZE, SIZE))
 
+	## places peices on board
 	def place_peices(self):
 		## place white
 		for y in range(0, 3):
@@ -29,7 +37,8 @@ class Checkers():
 		raise NotImplementedError
 
 	def reset(self):
-		raise NotImplementedError
+		self.board = self.set_board()
+		self.place_peices()
 
 	def close(self):
 		raise NotImplementedError
@@ -39,4 +48,4 @@ class Checkers():
 
 if __name__ == "__main__":
 	env = Checkers()
-	print(env.board.flatten())
+	print(env.board)
