@@ -8,7 +8,8 @@ This project is my attempt to create an AI that will be able to beat humans at t
 
 Error to be minimized temporal difference.
 
-Episodes are generated as followed: S_t, A_t, R_t+1, S_t+1, A_t+1.
+Episodes are generated as followed: 
+state, action, reward, Next state, next action ... until terminal state.
 
 The function q(S, A) is the value of the state action pair S,A.
 
