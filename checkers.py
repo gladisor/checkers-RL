@@ -97,7 +97,6 @@ class Checkers():
 		return False
 
 	def capture(self, color, start_coord, end_coord, midpoint):
-		print(f"midpoint {midpoint}")
 		midpoint_peice = self.board[midpoint]
 		self.board[midpoint] = 0
 		if color == 'red':
@@ -136,13 +135,13 @@ class Checkers():
 	## Generates and returns possible next move
 	# for specified color
 	def get_possible_actions(self, color):
-		raise NotImplementedError
+		if color == 'red':
+			peices = self.red
+		elif color == 'black':
+			peices = self.black
 
-	def render(self):
-		raise NotImplementedError
-
-	def close(self):
-		raise NotImplementedError
+		for peice in peices:
+			print(peice)
 
 	## Takes in color, action: string, (peice at position, position to move to)
 	## Executes action
@@ -156,10 +155,7 @@ class Checkers():
 if __name__ == "__main__":
 	env = Checkers()
 	state = env.reset()
-	print(state)
-	action = ((2, 0), (3, 1))
-	print(action)
-	print(env.action_to_vect(action))
+	env.get_possible_actions('black')
 
 	## Uncomment to test step function
 	# players = ['red', 'black']

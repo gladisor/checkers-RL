@@ -25,5 +25,4 @@ class DQNAgent(baseAgent):
 		raise NotImplementedError
 
 if __name__ == "__main__":
-	env = Checkers()
-	q = DQN()
+	
