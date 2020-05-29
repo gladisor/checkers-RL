@@ -27,7 +27,6 @@ class Checkers():
 		## List of positions of each peice
 		self.red = []
 		self.black = []
-		self.reset()
 
 	## Initialize empty board
 	def set_board(self):
@@ -67,16 +66,21 @@ class Checkers():
 		self.set_board()
 		self.place_peices()
 		self.get_peices_position()
+		return self.board.flatten()
 
-	## Takes int position on board
-	## Returns (y, x) coordinate
-	def int_to_coord(self, pos):
-		return int(pos/SIZE), pos%SIZE
+	def coord_to_vect(self, coord):
+		y = np.zeros(SIZE)
+		y[coord[0]] = 1
+		x = np.zeros(SIZE)
+		x[coord[1]] = 1
+		final = np.concatenate((y, x))
+		return final
 
-	## Takes coodinate tuple
-	## Returns int position
-	def coord_to_int(self, coord):
-		return coord[0] * SIZE + coord[1]
+	def action_to_vect(self, action):
+		start = self.coord_to_vect(action[0])
+		end = self.coord_to_vect(action[1])
+		final = np.concatenate((start, end))
+		return final
 
 	## Takes two coordinates
 	## Returns midpoint
@@ -86,13 +90,14 @@ class Checkers():
 		return (y_diff, x_diff)
 
 	def was_capture(self, start_coord, end_coord):
-		y_diff = start_coord[0] - end_coord[0]
-		x_diff = start_coord[1] - end_coord[1]
+		y_diff = abs(start_coord[0] - end_coord[0])
+		x_diff = abs(start_coord[1] - end_coord[1])
 		if y_diff > 1 or x_diff > 1:
 			return True
 		return False
 
 	def capture(self, color, start_coord, end_coord, midpoint):
+		print(f"midpoint {midpoint}")
 		midpoint_peice = self.board[midpoint]
 		self.board[midpoint] = 0
 		if color == 'red':
@@ -106,9 +111,7 @@ class Checkers():
 	## Takes a peice from start_pos (int)
 	## Moves it to end_pos (int)
 	## Returns reward
-	def move(self, color, start_pos, end_pos):
-		start_coord = self.int_to_coord(start_pos)
-		end_coord = self.int_to_coord(end_pos)
+	def move(self, color, start_coord, end_coord):
 		midpoint = self.midpoint(start_coord, end_coord)
 
 		## Move peice
@@ -132,7 +135,7 @@ class Checkers():
 
 	## Generates and returns possible next move
 	# for specified color
-	def get_possible_moves(self, color):
+	def get_possible_actions(self, color):
 		raise NotImplementedError
 
 	def render(self):
@@ -152,39 +155,46 @@ class Checkers():
 
 if __name__ == "__main__":
 	env = Checkers()
+	state = env.reset()
+	print(state)
+	action = ((2, 0), (3, 1))
+	print(action)
+	print(env.action_to_vect(action))
 
-	players = ['red', 'black']
-	print(env.board)
-	done = False
-	while not done:
-		for player in players:
-			print(f"{player}'s turn!")
-			start_y = int(input("Enter y coord of peice: "))
-			start_x = int(input("Enter x coord of peice: "))
-			end_y = int(input("Enter y coord of loc: "))
-			end_x = int(input("Enter x coord of loc: "))
+	## Uncomment to test step function
+	# players = ['red', 'black']
+	# print(env.board)
+	# done = False
+	# while not done:
+	# 	for player in players:
+	# 		print(f"{player}'s turn!")
+	# 		start_y = int(input("Enter y coord of peice: "))
+	# 		start_x = int(input("Enter x coord of peice: "))
+	# 		end_y = int(input("Enter y coord of loc: "))
+	# 		end_x = int(input("Enter x coord of loc: "))
 
-			peice = env.coord_to_int((start_y, start_x))
-			loc = env.coord_to_int((end_y, end_x))
-			action = (peice, loc)
+	# 		start_coord = (start_y, start_x)
+	# 		end_coord = (end_y, end_x)
 
-			env.step(player, action)
-			print(env.board)
+	# 		action = (start_coord, end_coord)
 
-	### Uncomment this block to test move function
-	## Testing functions:
+	# 		env.step(player, action)
+	# 		print(env.board)
+
+	## Uncomment this block to test move function
+	# Testing functions:
 	# print(env.board)
-	# env.move('red', env.coord_to_int((2, 0)), env.coord_to_int((3, 1)))
+	# env.move('red', (2, 0), (3, 1))
 	# print(env.board)
-	# env.move('black', env.coord_to_int((5, 1)), env.coord_to_int((4, 2)))
+	# env.move('black', (5, 1), (4, 2))
 	# print(env.board)
-	# env.move('red', env.coord_to_int((2, 4)), env.coord_to_int((3, 5)))
+	# env.move('red', (2, 4), (3, 5))
 	# print(env.board)
-	# env.move('black', env.coord_to_int((4, 2)), env.coord_to_int((2, 0)))
+	# env.move('black', (4, 2), (2, 0))
 	# print(env.board)
-	# env.move('red', env.coord_to_int((2, 2)), env.coord_to_int((3, 1)))
+	# env.move('red', (2, 2), (3, 1))
 	# print(env.board)
-	# env.move('black', env.coord_to_int((5, 3)), env.coord_to_int((4, 2)))
+	# env.move('black', (5, 3), (4, 2))
 	# print(env.board)
-	# env.move('red', env.coord_to_int((3, 1)), env.coord_to_int((5, 3)))
+	# env.move('red', (3, 1), (5, 3))
 	# print(env.board)
