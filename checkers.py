@@ -1,5 +1,8 @@
 import numpy as np
 
+### NOTE: remove red black functionality for move
+## selection. Replace with flipping board
+
 ## Board size is an 8 * 8 grid
 SIZE = 8
 
@@ -66,6 +69,7 @@ class Checkers():
 		self.set_board()
 		self.place_peices()
 		self.get_peices_position()
+		self.board_direction = 0
 		return self.board.flatten()
 
 	def coord_to_vect(self, coord):
@@ -105,7 +109,6 @@ class Checkers():
 		elif color == 'black':
 			idx = self.red.index(midpoint)
 			self.red.pop(idx)
-		return CAPTURE_REWARD
 
 	## Takes a peice from start_pos (int)
 	## Moves it to end_pos (int)
@@ -129,8 +132,23 @@ class Checkers():
 		## If move resulted in a capture, update list and return reward
 		reward = 0
 		if self.was_capture(start_coord, end_coord):
-			reward = self.capture(color, start_coord, end_coord, midpoint)
+			self.capture(color, start_coord, end_coord, midpoint)
+			reward += CAPTURE_REWARD
 		return reward
+
+	def flip_coord(self, coord):
+		coord = (abs(coord[0] - SIZE + 1), abs(coord[1] - SIZE + 1))
+		return coord
+
+	def flip_board(self):
+		self.board = np.rot90(self.board, 2)
+		for i in range(len(self.red)):
+			self.red[i] = self.flip_coord(self.red[i])
+		for i in range(len(self.black)):
+			self.black[i] = self.flip_coord(self.black[i])
+
+		## Alternates this variable 0-1-0-1...
+		self.board_direction = (self.board_direction + 1)%2
 
 	## Generates and returns possible next move
 	# for specified color
@@ -142,6 +160,9 @@ class Checkers():
 
 		for peice in peices:
 			print(peice)
+
+	def win_condition(self):
+		return
 
 	## Takes in color, action: string, (peice at position, position to move to)
 	## Executes action
@@ -155,42 +176,3 @@ class Checkers():
 if __name__ == "__main__":
 	env = Checkers()
 	state = env.reset()
-	env.get_possible_actions('black')
-
-	## Uncomment to test step function
-	# players = ['red', 'black']
-	# print(env.board)
-	# done = False
-	# while not done:
-	# 	for player in players:
-	# 		print(f"{player}'s turn!")
-	# 		start_y = int(input("Enter y coord of peice: "))
-	# 		start_x = int(input("Enter x coord of peice: "))
-	# 		end_y = int(input("Enter y coord of loc: "))
-	# 		end_x = int(input("Enter x coord of loc: "))
-
-	# 		start_coord = (start_y, start_x)
-	# 		end_coord = (end_y, end_x)
-
-	# 		action = (start_coord, end_coord)
-
-	# 		env.step(player, action)
-	# 		print(env.board)
-
-	## Uncomment this block to test move function
-	# Testing functions:
-	# print(env.board)
-	# env.move('red', (2, 0), (3, 1))
-	# print(env.board)
-	# env.move('black', (5, 1), (4, 2))
-	# print(env.board)
-	# env.move('red', (2, 4), (3, 5))
-	# print(env.board)
-	# env.move('black', (4, 2), (2, 0))
-	# print(env.board)
-	# env.move('red', (2, 2), (3, 1))
-	# print(env.board)
-	# env.move('black', (5, 3), (4, 2))
-	# print(env.board)
-	# env.move('red', (3, 1), (5, 3))
-	# print(env.board)
