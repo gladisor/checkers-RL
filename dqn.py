@@ -32,5 +32,9 @@ if __name__ == "__main__":
 	action_vect = torch.tensor(action_vect)
 	x = torch.cat((state, action_vect)).float()
 
+	print(f"State = {state}")
+	print(f"Action = {action_vect}")
+	print(f"Feature vector = {x}")
+	
 	print(q)
 	print(q(x))
