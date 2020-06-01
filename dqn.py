@@ -21,20 +21,21 @@ class DQN(nn.Module):
 		return x
 
 if __name__ == "__main__":
-	q = DQN(d_in=96, d_hidden=10, num_hidden=5).float()
+	q = DQN(d_in=96, d_hidden=64, num_hidden=5).float()
 
 	env = Checkers()
 	state = env.reset()
-	action = ((2, 0), (3, 1))
-	action_vect = env.action_to_vect(action)
+	state = torch.tensor(state).float()
 
-	state = torch.tensor(state)
-	action_vect = torch.tensor(action_vect)
-	x = torch.cat((state, action_vect)).float()
+	possible_actions = env.get_possible_actions('black')
 
-	print(f"State = {state}")
-	print(f"Action = {action_vect}")
-	print(f"Feature vector = {x}")
-	
-	print(q)
-	print(q(x))
+	X = []
+	for action in possible_actions:
+		action = env.action_to_vect(action)
+		action = torch.tensor(action).float()
+		X.append(torch.cat((state, action)).float())
+
+	X = torch.stack(X)
+	q_vals = q(X)
+
+	print(torch.argmax(q_vals))

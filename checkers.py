@@ -21,7 +21,7 @@ CAPTURE_REWARD = 1
 
 mark = {
 	'red':1,
-	'black':2}
+	'black':-1}
 
 class Checkers():
 	"""
@@ -34,8 +34,6 @@ class Checkers():
 		## Bit representing position of board:
 		# 0 is standard
 		# 1 is flipped
-		## This allows the agent to play against itself
-		self.board_direction = None
 		## List of positions of each piece
 		self.pieces = {
 			'red':[],
@@ -77,6 +75,16 @@ class Checkers():
 		self.set_board()
 		self.place_pieces()
 		return self.board.flatten()
+
+	def get_piece_positions(self, board, color):
+		"""
+		Returns a list of current position of all pieces of that color
+		"""
+		positions = []
+		for y in range(SIZE):
+			for x in range(SIZE):
+				if self.board[y,x] == mark[color]:
+					positions.append((y, x))
 
 	def coord_to_vect(self, coord):
 		"""
@@ -158,9 +166,8 @@ class Checkers():
 		if self.was_capture(start_coord, end_coord):
 			opponent_color = self.get_opponent_color(color)
 			self.capture(opponent_color, start_coord, end_coord)
-			reward += CAPTURE_REWARD
 			has_next_move = True
-		return reward, has_next_move
+		return has_next_move
 
 	def flip_coord(self, coord):
 		"""
@@ -220,13 +227,17 @@ class Checkers():
 		opponent_color = self.get_opponent_color(color)
 
 		possible_actions = []
+		## Check if left move is valid
 		if self.within_bounds(left_move) and self.board[left_move] == 0:
 			possible_actions.append((piece, left_move))
+		## Check if right move is valid
 		if self.within_bounds(right_move) and self.board[right_move] == 0:
 			possible_actions.append((piece, right_move))
+		## Check if left jump is valid
 		if self.within_bounds(left_jump) and self.board[left_jump] == 0 \
 				and self.board[left_midpoint] == opponent_color:
 			possible_actions.append((piece, left_jump))
+		## Check if right jump is valid
 		if self.within_bounds(right_jump) and self.board[right_jump] == 0 \
 				and self.board[right_midpoint] == opponent_color:
 			possible_actions.append((piece, right_jump))
@@ -234,7 +245,7 @@ class Checkers():
 
 	def get_possible_actions(self, color):
 		"""
-		Generates and returns possible next move
+		Generates and yeah probably I do need reassurance like I'm very nice I need yeah so you're not like mad at me or anything and Erin's not mad at me or I don't know I just have that feeling sometimes I guess it's just yeah allreturns possible next move
 		for specified color
 		"""
 		possible_actions = []
@@ -243,6 +254,7 @@ class Checkers():
 		return possible_actions
 
 	def win_condition(self, color):
+		## If opponent has no moves, you won
 		if not self.get_possible_actions(self.get_opponent_color(color)):
 			terminal = True
 		else:
@@ -260,8 +272,11 @@ class Checkers():
 		if color == 'black' and self.selfPlay == True:
 			action = self.flip_action(action)
 
-		reward, has_next_move = self.move(color, action[0], action[1])
+		has_next_move = self.move(color, action[0], action[1])
 		terminal = self.win_condition(color)
+		reward = 0
+		if terminal:
+			reward = 1
 
 		## If the current color has a next move 
 		# return the board as it was before
@@ -282,7 +297,7 @@ class Checkers():
 			print(i, end="  ")
 		print()
 
-		for idx, row in enumerate(env.board):
+		for idx, row in enumerate(self.board):
 			print(idx, row)
 
 if __name__ == "__main__":
@@ -310,7 +325,11 @@ if __name__ == "__main__":
 				print(f"{color}'s move")
 				print(f"Terminal? {terminal}")
 				print()
+
 				env.render()
 				if terminal:
 					break
-		
+			if terminal:
+				break
+		if terminal:
+			break
