@@ -32,7 +32,7 @@ class Checkers():
 		# 1 is flipped
 		## This allows the agent to play against itself
 		self.board_direction = None
-		## List of positions of each peice
+		## List of positions of each piece
 		self.pieces = {
 			'red':[],
 			'black':[]}
@@ -42,41 +42,27 @@ class Checkers():
 		self.board = np.zeros((SIZE, SIZE))
 
 	## Places pieces on board
+	## Records position in lists
 	def place_pieces(self):
 		## place red
 		for y in range(0, 3):
 			for x in range(SIZE):
 				if (x + y)%2 == 0:
 					self.board[y, x] = mark['red']
+					self.pieces['red'].append((y, x))
 		## place black
 		for y in range(5, SIZE):
 			for x in range(SIZE):
 				if (x + y)%2 == 0:
 					self.board[y, x] = mark['black']
-
-	## Generates list of tuples for each peice position of 
-	# each color
-	def get_pieces_position(self):
-		self.pieces['red'] = []
-		self.pieces['black'] = []
-
-		for y in range(SIZE):
-			for x in range(SIZE):
-				if self.board[y, x] == mark['red']:
-					self.pieces['red'].append((y, x))
-				elif self.board[y, x] == mark['black']:
 					self.pieces['black'].append((y, x))
-				else:
-					pass
 
 	## Re makes board
 	## Places pieces in correct starting position
-	## Generates list of positions of each color peice
+	## Generates list of positions of each color piece
 	def reset(self):
 		self.set_board()
 		self.place_pieces()
-		self.get_pieces_position()
-		self.board_direction = 0
 		return self.board.flatten()
 
 	## Takes (y, x) coord
@@ -89,6 +75,8 @@ class Checkers():
 		final = np.concatenate((y, x))
 		return final
 
+	## Converts action tuple of the form: (start_coord, end_coord)
+	## Returns onehot vector representation of that action
 	def action_to_vect(self, action):
 		start = self.coord_to_vect(action[0])
 		end = self.coord_to_vect(action[1])
@@ -102,6 +90,8 @@ class Checkers():
 		x_diff = int(abs(coord1[1] + coord2[1])/2)
 		return (y_diff, x_diff)
 
+	## Takes two coordinates
+	## If the move was a capture return True
 	def was_capture(self, start_coord, end_coord):
 		y_diff = abs(start_coord[0] - end_coord[0])
 		x_diff = abs(start_coord[1] - end_coord[1])
@@ -123,7 +113,7 @@ class Checkers():
 	def move(self, color, start_coord, end_coord):
 		midpoint = self.midpoint(start_coord, end_coord)
 
-		## Move peice
+		## Move piece
 		piece = self.board[start_coord]
 		self.board[start_coord] = 0
 		self.board[end_coord] = piece
@@ -147,14 +137,13 @@ class Checkers():
 		coord = (abs(coord[0] - SIZE + 1), abs(coord[1] - SIZE + 1))
 		return coord
 
-	def flip_board(self):
-		self.board = np.rot90(self.board, 2)
-		for key in self.pieces.keys():
-			for i in range(len(self.pieces[key])):
-				self.pieces[key][i] = self.flip_coord(self.pieces[key][i])
-
-		## Alternates this variable 0-1-0-1...
-		self.board_direction = (self.board_direction + 1)%2
+	## Takes string color
+	## Returns board from standardized perspective
+	def get_cannonical_board(self, color):
+		if color == 'red':
+			return self.board.flatten()
+		elif color == 'black':
+			return np.rot90(self.board, 2).flatten()
 
 	def get_pieces_moves(self, color, piece, board_direction):
 		return
@@ -200,7 +189,15 @@ if __name__ == "__main__":
 			start_x = int(input("start x: "))
 			end_y = int(input("end y: "))
 			end_x = int(input("end x: "))
+
+			start_coord = (start_y, start_x)
+			end_coord = (end_y, end_x)
+
+			if color == 'black':
+				start_coord = env.flip_coord(start_coord)
+				end_coord = env.flip_coord(end_coord)
 			action = ((start_y, start_x), (end_y, end_x))
+
 			env.step(color, action)
 			env.flip_board()
 			env.render()
