@@ -132,7 +132,7 @@ class Checkers():
 		action = (self.flip_coord(action[0]), self.flip_coord(action[1]))
 		return action
 
-	def get_cannonical_board(self, board, color):
+	def get_state(self, board, color):
 		"""
 		Takes string color
 		Returns board from standardized perspective
@@ -192,7 +192,6 @@ class Checkers():
 			possible_actions.append((piece, right_jump))
 		return possible_actions
 
-
 	def get_piece_positions(self, board, color):
 		"""
 		Returns a list of current position of all pieces of that color
@@ -224,6 +223,13 @@ class Checkers():
 	def win_condition(self, board, color):
 		## If opponent has no moves, you won
 		if not self.get_possible_actions(board, self.get_opponent_color(color)):
+			terminal = True
+		else:
+			terminal = False
+		return terminal
+
+	def get_game_ended(self, board, color):
+		if not self.get_possible_actions(board, color):
 			terminal = True
 		else:
 			terminal = False
@@ -271,10 +277,10 @@ class Checkers():
 		# return the board as it was before
 		# otherwise return the board from opponents perspective
 		if hasNextMove:
-			state = self.get_cannonical_board(self.board, color)
+			state = self.get_state(self.board, color)
 		else:
 			opponent_color = self.get_opponent_color(color)
-			state = self.get_cannonical_board(self.board, opponent_color)
+			state = self.get_state(self.board, opponent_color)
 		return state, reward, terminal, hasNextMove
 
 	def render(self):
