@@ -241,6 +241,28 @@ class Checkers():
 		"""
 		print(self.board)
 
+	def coord_to_vect(self, coord):
+		"""
+		Takes (y, x) coord
+		Returns onehot encoded vector representation
+		"""
+		y = np.zeros(SIZE)
+		y[coord[0]] = 1
+		x = np.zeros(SIZE)
+		x[coord[1]] = 1
+		final = np.concatenate((y, x))
+		return final
+
+	def action_to_vect(self, action):
+		"""
+		Converts action tuple of the form: (start_coord, end_coord)
+		Returns onehot vector representation of that action
+		"""
+		start = self.coord_to_vect(action[0])
+		end = self.coord_to_vect(action[1])
+		final = np.concatenate((start, end))
+		return final
+
 
 if __name__ == "__main__":
 	env = Checkers()
@@ -258,3 +280,4 @@ if __name__ == "__main__":
 		print(f"{color}'s action: {action}")
 		board, color = env.get_next_state(board, color, action)
 		print(board)
+	print(f"{color} has no moves!")
