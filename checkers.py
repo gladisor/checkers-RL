@@ -1,20 +1,18 @@
 import numpy as np
 
-### NOTE: remove red black functionality for move
-## selection. Replace with flipping board
-
 ## Board size is an 8 * 8 grid
 SIZE = 8
 
 """
-[[ 1.  0.  1.  0.  1.  0.  1.  0.]
- [ 0.  1.  0.  1.  0.  1.  0.  1.]
- [ 1.  0.  1.  0.  1.  0.  1.  0.]
- [ 0.  0.  0.  0.  0.  0.  0.  0.]
- [ 0.  0.  0.  0.  0.  0.  0.  0.]
- [ 0. -1.  0. -1.  0. -1.  0. -1.]
- [-1.  0. -1.  0. -1.  0. -1.  0.]
- [ 0. -1.  0. -1.  0. -1.  0. -1.]]
+   0  1  2  3  4  5  6  7  
+0 [1. 0. 1. 0. 1. 0. 1. 0.]
+1 [0. 1. 0. 1. 0. 1. 0. 1.]
+2 [1. 0. 1. 0. 1. 0. 1. 0.]
+3 [0. 0. 0. 0. 0. 0. 0. 0.]
+4 [0. 0. 0. 0. 0. 0. 0. 0.]
+5 [0. 2. 0. 2. 0. 2. 0. 2.]
+6 [2. 0. 2. 0. 2. 0. 2. 0.]
+7 [0. 2. 0. 2. 0. 2. 0. 2.]
  """
 
 CAPTURE_REWARD = 1
@@ -28,27 +26,19 @@ class Checkers():
 	Class that simulates checkers games and also
 	serves as the backend for the GUI
 	"""
-	def __init__(self):
+	def __init__(self, starting='red'):
 		## Array representing board
 		self.board = None
-		## Bit representing position of board:
-		# 0 is standard
-		# 1 is flipped
-		## List of positions of each piece
-		self.pieces = {
-			'red':[],
-			'black':[]}
-
 		self.selfPlay = True
 
 	def set_board(self):
 		"""
 		Initialize empty board
 		"""
-		self.board = np.zeros((SIZE, SIZE))
+		return np.zeros((SIZE, SIZE))
 
 	
-	def place_pieces(self):
+	def place_pieces(self, board):
 		"""
 		Places pieces on board
 		Records position in lists
@@ -57,14 +47,12 @@ class Checkers():
 		for y in range(0, 3):
 			for x in range(SIZE):
 				if (x + y)%2 == 0:
-					self.board[y, x] = mark['red']
-					self.pieces['red'].append((y, x))
+					board[y, x] = mark['red']
 		## place black
 		for y in range(5, SIZE):
 			for x in range(SIZE):
 				if (x + y)%2 == 0:
-					self.board[y, x] = mark['black']
-					self.pieces['black'].append((y, x))
+					board[y, x] = mark['black']
 
 	def reset(self):
 		"""
@@ -72,19 +60,10 @@ class Checkers():
 		Places pieces in correct starting position
 		Generates list of positions of each color piece
 		"""
-		self.set_board()
-		self.place_pieces()
+		self.board = self.set_board()
+		self.place_pieces(self.board)
+		## Red starts first so always return standard board
 		return self.board.flatten()
-
-	def get_piece_positions(self, board, color):
-		"""
-		Returns a list of current position of all pieces of that color
-		"""
-		positions = []
-		for y in range(SIZE):
-			for x in range(SIZE):
-				if self.board[y,x] == mark[color]:
-					positions.append((y, x))
 
 	def coord_to_vect(self, coord):
 		"""
@@ -128,46 +107,14 @@ class Checkers():
 			return True
 		return False
 
-	def capture(self, opponent_color, start_coord, end_coord):
-		"""
-		Removes captured piece from board
-		Pops captured piece from opponent pieces
-		"""
-		midpoint = self.midpoint(start_coord, end_coord)
-		midpoint_piece = self.board[midpoint]
-		self.board[midpoint] = 0
-		idx = self.pieces[opponent_color].index(midpoint)
-		self.pieces[opponent_color].pop(idx)
-
 	def get_opponent_color(self, color):
+		"""
+		Returns opponent color
+		"""
 		if color == 'red':
 			return 'black'
 		else:
 			return 'red'
-
-	def move(self, color, start_coord, end_coord):
-		"""
-		Takes a piece from start_pos (int)
-		Moves it to end_pos (int)
-		Returns reward
-		"""
-		## Move piece
-		piece = self.board[start_coord]
-		self.board[start_coord] = 0
-		self.board[end_coord] = piece
-
-		## Update position in list
-		idx = self.pieces[color].index(start_coord)
-		self.pieces[color][idx] = end_coord
-
-		## If move resulted in a capture, update list and return reward
-		has_next_move = False
-		reward = 0
-		if self.was_capture(start_coord, end_coord):
-			opponent_color = self.get_opponent_color(color)
-			self.capture(opponent_color, start_coord, end_coord)
-			has_next_move = True
-		return has_next_move
 
 	def flip_coord(self, coord):
 		"""
@@ -185,15 +132,15 @@ class Checkers():
 		action = (self.flip_coord(action[0]), self.flip_coord(action[1]))
 		return action
 
-	def get_cannonical_board(self, color):
+	def get_cannonical_board(self, board, color):
 		"""
 		Takes string color
 		Returns board from standardized perspective
 		"""
 		if color == 'red':
-			return self.board.flatten()
+			return board.flatten()
 		elif color == 'black':
-			return np.rot90(self.board, 2).flatten()
+			return -1*np.rot90(board, 2).flatten()
 
 	def within_bounds(self, coord):
 		"""
@@ -217,8 +164,10 @@ class Checkers():
 		else:
 			forward_move = -1
 			forward_jump = -2
+		## Normal moves
 		left_move = (piece[0] + forward_move, piece[1] + 1)
 		right_move = (piece[0] + forward_move, piece[1] - 1)
+		## Capture moves
 		left_jump = (piece[0] + forward_jump, piece[1] + 2)
 		right_jump = (piece[0] + forward_jump, piece[1] - 2)
 
@@ -235,33 +184,72 @@ class Checkers():
 			possible_actions.append((piece, right_move))
 		## Check if left jump is valid
 		if self.within_bounds(left_jump) and self.board[left_jump] == 0 \
-				and self.board[left_midpoint] == opponent_color:
+				and self.board[left_midpoint] == mark[opponent_color]:
 			possible_actions.append((piece, left_jump))
 		## Check if right jump is valid
 		if self.within_bounds(right_jump) and self.board[right_jump] == 0 \
-				and self.board[right_midpoint] == opponent_color:
+				and self.board[right_midpoint] == mark[opponent_color]:
 			possible_actions.append((piece, right_jump))
 		return possible_actions
 
-	def get_possible_actions(self, color):
+
+	def get_piece_positions(self, board, color):
+		"""
+		Returns a list of current position of all pieces of that color
+		"""
+		positions = []
+		for y in range(SIZE):
+			for x in range(SIZE):
+				if self.board[y, x] == mark[color]:
+					positions.append((y, x))
+		return positions
+
+	def get_possible_actions(self, board, color):
 		"""
 		Generates and yeah probably I do need reassurance like I'm very nice I need yeah so you're not like mad at me or anything and Erin's not mad at me or I don't know I just have that feeling sometimes I guess it's just yeah allreturns possible next move
 		for specified color
 		"""
+		pieces = self.get_piece_positions(board, color)
+
 		possible_actions = []
-		for piece in self.pieces[color]:
+		for piece in pieces:
 			possible_actions.extend(self.get_piece_actions(color, piece))
+
+		if self.selfPlay == True:
+			for i in range(len(possible_actions)):
+				possible_actions[i] = self.flip_action(possible_actions[i])
+
 		return possible_actions
 
-	def win_condition(self, color):
+	def win_condition(self, board, color):
 		## If opponent has no moves, you won
-		if not self.get_possible_actions(self.get_opponent_color(color)):
+		if not self.get_possible_actions(board, self.get_opponent_color(color)):
 			terminal = True
 		else:
 			terminal = False
 		return terminal
 
-	def step(self, color, action):
+	def move(self, board, color, start_coord, end_coord):
+		"""
+		Takes a piece from start_pos (int)
+		Moves it to end_pos (int)
+		Returns reward
+		"""
+		## Move piece
+		piece = board[start_coord]
+		board[start_coord] = 0
+		board[end_coord] = piece
+
+		## If move resulted in a capture, remove captured piece from board
+		hasNextMove = False
+		if self.was_capture(start_coord, end_coord):
+			midpoint = self.midpoint(start_coord, end_coord)
+			midpoint_piece = self.board[midpoint]
+			board[midpoint] = 0
+			hasNextMove = True
+		return hasNextMove
+
+	def step(self, board, color, action):
 		"""
 		Takes in color, action: string, (start_coord, end_coord)
 		Executes action
@@ -272,8 +260,9 @@ class Checkers():
 		if color == 'black' and self.selfPlay == True:
 			action = self.flip_action(action)
 
-		has_next_move = self.move(color, action[0], action[1])
-		terminal = self.win_condition(color)
+		hasNextMove = self.move(board, color, action[0], action[1])
+		terminal = self.win_condition(board, color)
+
 		reward = 0
 		if terminal:
 			reward = 1
@@ -281,52 +270,48 @@ class Checkers():
 		## If the current color has a next move 
 		# return the board as it was before
 		# otherwise return the board from opponents perspective
-		if has_next_move:
-			state = self.get_cannonical_board(color)
+		if hasNextMove:
+			state = self.get_cannonical_board(self.board, color)
 		else:
 			opponent_color = self.get_opponent_color(color)
-			state = self.get_cannonical_board(opponent_color)
-		return state, reward, terminal, has_next_move
+			state = self.get_cannonical_board(self.board, opponent_color)
+		return state, reward, terminal, hasNextMove
 
 	def render(self):
 		"""
-		Primative display function with indexes, neutral perspective
+		Primative display function
 		"""
-		print("  ", end=" ")
-		for i in range(8):
-			print(i, end="  ")
-		print()
-
-		for idx, row in enumerate(self.board):
-			print(idx, row)
+		print(self.board)
 
 if __name__ == "__main__":
 	env = Checkers()
 	state = env.reset()
-	env.render()
 	env.selfPlay = False
+	env.render()
 
 	## Test loop
 	terminal = False
 	while not terminal:
 		for color in mark.keys():
-			has_next_move = True
-			while has_next_move:
-				possible_actions = env.get_possible_actions(color)
+			hasNextMove = True
+			while hasNextMove == True:
+				possible_actions = env.get_possible_actions(env.board, color)
 				if not possible_actions:
 					break
 
 				idx = np.random.choice(range(len(possible_actions)))
 				action = possible_actions[idx]
-				state, reward, terminal, has_next_move = env.step(color, action)
+				state, reward, terminal, hasNextMove = env.step(env.board, color, action)
 				
 				print()
-				print(f"Action: {action}")
 				print(f"{color}'s move")
+				print(f"Action: {action}")
 				print(f"Terminal? {terminal}")
+				print(f"{color} reward: {reward}")
 				print()
 
 				env.render()
+				print(hasNextMove)
 				if terminal:
 					break
 			if terminal:
