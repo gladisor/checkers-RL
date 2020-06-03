@@ -7,14 +7,15 @@ from tqdm import tqdm
 LOOSE_REWARD = -100
 WIN_REWARD = 100
 
+PATH = "models/dqn.pt"
 class Arena():
-	def __init__(self, dqn, game):
+	def __init__(self, DQN, game):
 		"""
 		This class plays two agents against each other
 		It records the results and all interactions in the games played
 		"""
-		self.dqn = dqn
-		self.target_net = DQN().float()
+		self.agent = DQN()
+		self.opponent = DQN()
 		self.game = game
 
 	def make_inputs(self, state, actions):
@@ -45,7 +46,6 @@ class Arena():
 		curColor = 'red'
 		board = self.game.board
 		while not self.game.get_game_ended(board, curColor):
-			self.game.get_game_ended(board, curColor)
 			turn += 1
 			## Get state and possible actions
 			state = self.game.get_state(board, curColor)
@@ -55,12 +55,12 @@ class Arena():
 			idx = players[curColor](stateActions)
 			action = actions[idx]
 			## Update training examples
-			curStateAction = stateActions[idx]
 			if prevStateAction[curColor] != None:
 				## We store: prevStateAction, reward, all possible next stateActions
 				# So that we can do a bellman optimality update:
 				# q(S,A) <-- reward + gamma*max_a(q(S',a))
 				trainingExamples.append([prevStateAction[curColor], 0, stateActions])
+			curStateAction = stateActions[idx]
 			prevStateAction[curColor] = curStateAction
 			## If action was from black perspective we need to flip action
 			# back to black perspective before we execute
@@ -105,58 +105,63 @@ class Arena():
 				lagAgentWins += 1
 			data.extend(trainingExamples)
 
-		print(f"Win loss ratio: {leadAgentWins/(leadAgentWins+lagAgentWins)}")
 		return leadAgentWins, lagAgentWins, data
 
-	def learn(self, epochs, gamesPerEpoch, discount):
-		"""
-		Agent learns from data
-		"""
-		PATH = "models/dqn.pt"
-		opt = torch.optim.Adam(self.dqn.parameters())
-		loss = nn.MSELoss()
+	def prep_data(self, data):
+		SA = []
+		R = []
+		SA_ = []
+		for row in data:
+			SA.append(row[0])
+			R.append(row[1])
+			if row[2] != None:
+				SA_.append(torch.max(self.agent(row[2])).item())
+			else:
+				SA_.append(0)
 
-		torch.save(self.dqn.state_dict(), PATH)
-		for epoch in range(epochs):
-			self.target_net.load_state_dict(torch.load(PATH))
+		SA = torch.stack(SA)
+		R = torch.tensor(R)
+		SA_ = torch.tensor(SA_)
+		return SA, R, SA_
 
-			player1 = lambda x: torch.argmax(self.dqn(x))
-			player2 = lambda x: torch.argmax(self.target_net(x))
-
-			leadAgentWins, lagAgentWins, data = self.play_games(gamesPerEpoch, player1, player2)
-
-			SA = []
-			R = []
-			SA_ = []
-			for row in data:
-				SA.append(row[0])
-				R.append(row[1])
-				if row[2] != None:
-					SA_.append(torch.max(self.target_net(row[2])).item())
-				else:
-					SA_.append(0)
-
-			SA = torch.stack(SA)
-			R = torch.tensor(R)
-			SA_ = torch.tensor(SA_)
-
-			opt.zero_grad()
-			current_q = self.dqn(SA).squeeze()
-			target_q = R + discount*SA_
-			print(target_q.shape)
-			error = loss(current_q, target_q)
-			error.backward()
-			opt.step()
-			opt.zero_grad()
-			torch.save(self.dqn.state_dict(), PATH)
-
-if __name__ == "__main__":	
-	dqn = DQN().float()
+if __name__ == "__main__":
 	env = Checkers()
-	arena = Arena(dqn=dqn, game=env)
+	arena = Arena(DQN=DQN, game=env)
 
-	arena.learn(
-		epochs=10,
-		gamesPerEpoch=10,
-		discount=0.95)
-			
+	agent = DQN()
+	torch.save(agent.state_dict(), PATH)
+	opponent = DQN()
+	opponent.load_state_dict(torch.load(PATH))
+
+	loss = nn.MSELoss().cuda()
+	opt = torch.optim.Adam(agent.parameters(), lr=0.0001)
+
+	total_agent_wins = 0
+	total_opponent_wins = 0
+	for i in range(2000):
+		if i % 20 == 0:
+			opponent.load_state_dict(torch.load(PATH))
+		player1 = lambda x: torch.argmax(agent(x))
+		player2 = lambda x: torch.argmax(opponent(x))
+		# looser, data = arena.play_game(player1, player2, display=False)
+		agent_wins, opponent_wins, data = arena.play_games(20, player1, player2)
+		SA, R, SA_ = arena.prep_data(data)
+		target = (R + .95*SA_).cuda()
+		SA = SA.cuda()
+
+		agent.cuda()
+		opt.zero_grad()
+		pred = agent(SA)
+		pred = pred.view(pred.shape[0])
+		error = loss(pred, target)
+
+		error.backward()
+		opt.step()
+		opt.zero_grad()
+		agent.cpu()
+
+		torch.save(agent.state_dict(), PATH)
+		print()
+		total_agent_wins += agent_wins
+		total_opponent_wins += opponent_wins
+		print(f"Epoch: {i}, Agent wins: {total_agent_wins}, Oponent wins: {total_opponent_wins}, Error: {error.item()}")
