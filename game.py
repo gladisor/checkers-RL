@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 
 ## Board size is an 8 * 8 grid
 SIZE = 8
@@ -95,6 +96,9 @@ class Checkers():
 			Board,
 			Next player color
 		"""
+		if self.selfPlay == True and color == 'black':
+			action = self.flip_action(action)
+
 		startCoord = action[0]
 		endCoord = action[1]
 
@@ -262,6 +266,18 @@ class Checkers():
 		end = self.coord_to_vect(action[1])
 		final = np.concatenate((start, end))
 		return final
+
+	def make_inputs(self, state, actions):
+		state = torch.tensor(state)
+
+		X = []
+		for action in actions:
+			action_vect = self.action_to_vect(action)
+			action_vect = torch.tensor(action_vect)
+			vect = torch.cat((state, action_vect))
+			X.append(vect)
+		X = torch.stack(X).float()
+		return X
 
 
 if __name__ == "__main__":

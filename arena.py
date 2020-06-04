@@ -1,167 +1,67 @@
-from dqn import DQN
 from game import Checkers
-import torch
-import torch.nn as nn
+from dqn import DQN
+from agent import Agent
 from tqdm import tqdm
 
-LOOSE_REWARD = -100
-WIN_REWARD = 100
-
-PATH = "models/dqn.pt"
 class Arena():
-	def __init__(self, DQN, game):
-		"""
-		This class plays two agents against each other
-		It records the results and all interactions in the games played
-		"""
-		self.agent = DQN()
-		self.opponent = DQN()
+	def __init__(self, player1, player2, game):
+		self.player1 = player1
+		self.player2 = player2
 		self.game = game
 
-	def make_inputs(self, state, actions):
-		state = torch.tensor(state)
-
-		X = []
-		for action in actions:
-			action_vect = self.game.action_to_vect(action)
-			action_vect = torch.tensor(action_vect)
-			vect = torch.cat((state, action_vect))
-			X.append(vect)
-		X = torch.stack(X).float()
-		return X
-
-	def play_game(self, player1, player2, display=False):
+	def play_game(self, display=False):
 		players = {
-			'red': player1,
-			'black': player2}
+			'red':self.player1,
+			'black':self.player2}
 
-		prevStateAction = {
-			'red': None,
-			'black': None}
-
-		trainingExamples = []
 		self.game.reset()
-		turn = 0
-		## Red always starts
-		curColor = 'red'
 		board = self.game.board
-		while not self.game.get_game_ended(board, curColor):
-			turn += 1
-			## Get state and possible actions
-			state = self.game.get_state(board, curColor)
-			actions = self.game.get_possible_actions(board, curColor)
-			## Action selection
-			stateActions = self.make_inputs(state, actions)
-			idx = players[curColor](stateActions)
+		color = 'red'
+		while not self.game.get_game_ended(board, color):
+			actions = self.game.get_possible_actions(board, color)
+			state = self.game.get_state(board, color)
+			state_actions = self.game.make_inputs(state, actions)
+			idx = players[color](state_actions)
 			action = actions[idx]
-			## Update training examples
-			if prevStateAction[curColor] != None:
-				## We store: prevStateAction, reward, all possible next stateActions
-				# So that we can do a bellman optimality update:
-				# q(S,A) <-- reward + gamma*max_a(q(S',a))
-				trainingExamples.append([prevStateAction[curColor], 0, stateActions])
-			curStateAction = stateActions[idx]
-			prevStateAction[curColor] = curStateAction
-			## If action was from black perspective we need to flip action
-			# back to black perspective before we execute
-			if curColor == 'black':
-				action = self.game.flip_action(action)
-			## Execute action
-			prevColor = curColor
-			board, curColor = self.game.get_next_state(board, curColor, action)
-			## Print results
+			board, color = self.game.get_next_state(board, color, action)
 			if display:
-				print(f"{prevColor}'s -> turn: {turn} action: {action}")
 				print(board)
-		trainingExamples.append([prevStateAction[curColor], LOOSE_REWARD, None])
-		trainingExamples.append([prevStateAction[self.game.get_opponent_color(curColor)], WIN_REWARD, None])
-		## Return looser color and training examples
-		return curColor, trainingExamples
+		return color
 
-	def play_games(self, num, player1, player2):
-		"""
-		Lead agent plays num/2 games from red perspective
-		then num/2 games from black perspective
-		"""
-		data = []
-		leadAgentWins = 0
-		lagAgentWins = 0
-		halftime = int(num/2)
-		for _ in tqdm(range(halftime), desc="Lead agent plays first"):
-			result, trainingExamples = self.play_game(player1, player2)
+	def play_games(self, num):
+		half = int(num/2)
+		p1_won = 0
+		p2_won = 0
+
+		for _ in tqdm(range(half), desc="Agent plays red"):
+			result = self.play_game()
 			if result == 'red':
-				lagAgentWins += 1
+				p1_won += 1
 			elif result == 'black':
-				leadAgentWins += 1
-			data.extend(trainingExamples)
+				p2_won += 1
 
-		## Switch players at halftime
+		self.player1, self.player2 = self.player2, self.player1
 
-		for _ in tqdm(range(halftime), desc="Lead agent plays second"):
-			result, trainingExamples = self.play_game(player2, player1)
+		for _ in tqdm(range(half), desc="Agent plays black"):
+			result = self.play_game()
 			if result == 'red':
-				leadAgentWins += 1
+				p2_won += 1
 			elif result == 'black':
-				lagAgentWins += 1
-			data.extend(trainingExamples)
-
-		return leadAgentWins, lagAgentWins, data
-
-	def prep_data(self, data):
-		SA = []
-		R = []
-		SA_ = []
-		for row in data:
-			SA.append(row[0])
-			R.append(row[1])
-			if row[2] != None:
-				SA_.append(torch.max(self.agent(row[2])).item())
-			else:
-				SA_.append(0)
-
-		SA = torch.stack(SA)
-		R = torch.tensor(R)
-		SA_ = torch.tensor(SA_)
-		return SA, R, SA_
+				p1_won += 1
+		return p1_won, p2_won
 
 if __name__ == "__main__":
-	env = Checkers()
-	arena = Arena(DQN=DQN, game=env)
+	nnet = Agent(epsilon=0.5)
+	pnet = Agent(epsilon=0.5)
 
-	agent = DQN()
-	torch.save(agent.state_dict(), PATH)
-	opponent = DQN()
-	opponent.load_state_dict(torch.load(PATH))
+	game = Checkers()
 
-	loss = nn.MSELoss().cuda()
-	opt = torch.optim.Adam(agent.parameters(), lr=0.0001)
+	arena = Arena(
+		player1=lambda x: nnet.choose_action_egreedy(x),
+		player2=lambda x: pnet.choose_action_egreedy(x),
+		game=game)
 
-	total_agent_wins = 0
-	total_opponent_wins = 0
-	for i in range(2000):
-		if i % 20 == 0:
-			opponent.load_state_dict(torch.load(PATH))
-		player1 = lambda x: torch.argmax(agent(x))
-		player2 = lambda x: torch.argmax(opponent(x))
-		# looser, data = arena.play_game(player1, player2, display=False)
-		agent_wins, opponent_wins, data = arena.play_games(20, player1, player2)
-		SA, R, SA_ = arena.prep_data(data)
-		target = (R + .95*SA_).cuda()
-		SA = SA.cuda()
+	for i in range(10):
+		nnetwins, pnetwins = arena.play_games(10)
 
-		agent.cuda()
-		opt.zero_grad()
-		pred = agent(SA)
-		pred = pred.view(pred.shape[0])
-		error = loss(pred, target)
-
-		error.backward()
-		opt.step()
-		opt.zero_grad()
-		agent.cpu()
-
-		torch.save(agent.state_dict(), PATH)
-		print()
-		total_agent_wins += agent_wins
-		total_opponent_wins += opponent_wins
-		print(f"Epoch: {i}, Agent wins: {total_agent_wins}, Oponent wins: {total_opponent_wins}, Error: {error.item()}")
+		print(nnetwins, pnetwins)
