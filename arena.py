@@ -23,7 +23,7 @@ class Arena():
 
 		X = []
 		for action in actions:
-			action_vect = env.action_to_vect(action)
+			action_vect = self.game.action_to_vect(action)
 			action_vect = torch.tensor(action_vect)
 			vect = torch.cat((state, action_vect))
 			X.append(vect)
