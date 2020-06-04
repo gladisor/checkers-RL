@@ -46,10 +46,13 @@ class Coach():
 			## If terminal state, assign rewards
 			if self.game.get_game_ended(board, color):
 				opponent = self.game.get_opponent_color(color)
+				## Large negative reward for looser color
 				X.append(prev_state_action[color])
 				target.append(-1000)
+				## Large positive reward for winner color
 				X.append(prev_state_action[opponent])
 				target.append(1000)
+
 				X = torch.stack(X)
 				target = torch.tensor(target)
 				target = target.unsqueeze(1)
