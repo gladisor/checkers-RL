@@ -36,18 +36,18 @@ class Arena():
 		for _ in tqdm(range(half), desc="Agent plays red"):
 			result = self.play_game()
 			if result == 'red':
-				p1_won += 1
-			elif result == 'black':
 				p2_won += 1
+			elif result == 'black':
+				p1_won += 1
 
 		self.player1, self.player2 = self.player2, self.player1
 
 		for _ in tqdm(range(half), desc="Agent plays black"):
 			result = self.play_game()
 			if result == 'red':
-				p2_won += 1
-			elif result == 'black':
 				p1_won += 1
+			elif result == 'black':
+				p2_won += 1
 		return p1_won, p2_won
 
 if __name__ == "__main__":
