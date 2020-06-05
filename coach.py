@@ -1,11 +1,9 @@
 from game import Checkers
 from dqn import DQN
-from agent import Agent
 from arena import Arena
 from tqdm import tqdm
 import torch
 import torch.nn as nn
-import numpy as np
 
 class Coach():
 	def __init__(self, game, nnet):
@@ -14,32 +12,39 @@ class Coach():
 		self.pnet = nnet.__class__()
 		self.trainExamplesHistory = []
 
-	def execute_episode(self, epsilon=0.3, gamma=0.80):
+	def execute_episode(self, epsilon, gamma):
 		self.game.reset()
 		board = self.game.board
 		## Starting color always red
 		color = 'red'
 
-		agent = Agent(self.nnet, epsilon)
-
 		prev_state_action = {
 			'red':None,
 			'black':None}
 
-		X = []
-		target = []
+		trainExamples = []
 		while True:
 			actions = self.game.get_possible_actions(board, color)
 			state = self.game.get_state(board, color)
 			state_actions = self.game.make_inputs(state, actions)
 			## Epsilon greedy action selection
-			idx = agent.choose_action_egreedy(state_actions)
+			out = self.nnet(state_actions)
+
+			max_q = torch.max(out).unsqueeze(dim=0)
+			max_idx = torch.argmax(out)
+
+			if torch.rand(1) > epsilon:
+				idx = max_idx
+			else:
+				idx = torch.randint(
+					low=0,
+					high=len(state_actions),
+					size=(1,)).item()
 			action = actions[idx]
 			## Updating training examples
 			if prev_state_action[color] != None:
-				max_q = torch.max(self.nnet(state_actions)).item()
-				X.append(prev_state_action[color])
-				target.append(gamma*max_q)
+				data = torch.cat((prev_state_action[color], gamma*max_q))
+				trainExamples.append(data)
 			prev_state_action[color] = state_actions[idx]
 			## Executing action
 			board, color = self.game.get_next_state(board, color, action)
@@ -47,20 +52,17 @@ class Coach():
 			if self.game.get_game_ended(board, color):
 				opponent = self.game.get_opponent_color(color)
 				## Large negative reward for looser color
-				X.append(prev_state_action[color])
-				target.append(-1000)
+				data = torch.cat((prev_state_action[color], torch.tensor([-1000.0])))
+				trainExamples.append(data)
 				## Large positive reward for winner color
-				X.append(prev_state_action[opponent])
-				target.append(1000)
-
-				X = torch.stack(X)
-				target = torch.tensor(target)
-				target = target.unsqueeze(1)
+				data = torch.cat((prev_state_action[opponent], torch.tensor([1000.0])))
+				trainExamples.append(data)
 				break
-		return X, target
+		return trainExamples
 
 
 if __name__ == "__main__":
+	# torch.set_printoptions(profile="short", sci_mode=False)
 	game = Checkers()
 	## Network to be trained using coach
 	dqn = DQN()
@@ -69,36 +71,57 @@ if __name__ == "__main__":
 		game=game,
 		nnet=dqn)
 
-	PATH = "models/testmodel.pt"
+	loss = nn.MSELoss()
+	opt = torch.optim.Adam(coach.nnet.parameters(), lr=0.0001)
 
-	for epoch in range(5):
+	PATH = "models/test.pt"
+
+	for _ in range(10):
 		torch.save(coach.nnet.state_dict(), PATH)
 		coach.pnet.load_state_dict(torch.load(PATH))
 
-		for _ in tqdm(range(50), desc="Self play"):
-			X, target = coach.execute_episode()
-			loss = nn.MSELoss()
-			opt = torch.optim.Adam(coach.nnet.parameters(), lr=0.0001)
+		for episode in tqdm(range(300), desc="Training"):
+			data = coach.execute_episode(
+				epsilon=0.3,
+				gamma=0.80)
+
+			data = torch.stack(data)
+			X = data[:,range(data.shape[1]-1)]
+			y = data[:,data.shape[1]-1].unsqueeze(dim=1)
 
 			opt.zero_grad()
-			out = coach.nnet(X)
-			error = loss(out, target)
+			y_hat = coach.nnet(X)
+			error = loss(y_hat, y)
 			error.backward()
 			opt.step()
-			
-		X, target = coach.execute_episode(
-			epsilon=0.3,
-			gamma=0.95)
 
 		arena = Arena(
 			player1=lambda x: torch.argmax(coach.nnet(x)),
 			player2=lambda x: torch.argmax(coach.pnet(x)),
-			game=coach.game)
+			game=game)
 
-		nwins, pwins = arena.play_games(10)
+		p1_won = 0
+		p2_won = 0
 
-		if float(nwins)/(nwins+pwins) >= 0.5:
+		result = arena.play_game()
+		if result == 'red':
+			p2_won += 1
+		else:
+			p1_won += 1
+
+		arena.player1, arena.player2 = arena.player2, arena.player1
+
+		result = arena.play_game()
+		if result == 'black':
+			p1_won += 1
+		else:
+			p2_won += 1
+
+		if p1_won > p2_won:
+			print("Accepting model :D")
 			torch.save(coach.nnet.state_dict(), PATH)
 		else:
+			print("Rejecting model :(")
 			coach.nnet.load_state_dict(torch.load(PATH))
-		print(nwins, pwins)
+
+		print(f"Agent wins: {p1_won}, Opponent wins {p2_won}")

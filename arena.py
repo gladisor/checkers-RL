@@ -28,28 +28,6 @@ class Arena():
 				print(board)
 		return color
 
-	def play_games(self, num):
-		half = int(num/2)
-		p1_won = 0
-		p2_won = 0
-
-		for _ in tqdm(range(half), desc="Agent plays red"):
-			result = self.play_game()
-			if result == 'red':
-				p2_won += 1
-			elif result == 'black':
-				p1_won += 1
-
-		self.player1, self.player2 = self.player2, self.player1
-
-		for _ in tqdm(range(half), desc="Agent plays black"):
-			result = self.play_game()
-			if result == 'red':
-				p1_won += 1
-			elif result == 'black':
-				p2_won += 1
-		return p1_won, p2_won
-
 if __name__ == "__main__":
 	nnet = Agent(epsilon=0.5)
 	pnet = Agent(epsilon=0.5)
@@ -61,7 +39,4 @@ if __name__ == "__main__":
 		player2=lambda x: pnet.choose_action_egreedy(x),
 		game=game)
 
-	for i in range(10):
-		nnetwins, pnetwins = arena.play_games(10)
-
-		print(nnetwins, pnetwins)
+	arena.play_game(display=True)
