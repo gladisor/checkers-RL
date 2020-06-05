@@ -19,8 +19,8 @@ class Coach():
 		color = 'red'
 
 		prev_state_action = {
-			'red':None,
-			'black':None}
+			'red': None,
+			'black': None}
 
 		trainExamples = []
 		while True:
@@ -40,6 +40,7 @@ class Coach():
 					low=0,
 					high=len(state_actions),
 					size=(1,)).item()
+
 			action = actions[idx]
 			## Updating training examples
 			if prev_state_action[color] != None:
@@ -76,11 +77,12 @@ if __name__ == "__main__":
 
 	PATH = "models/test.pt"
 
-	for _ in range(10):
+	num_improvements = 0
+	for _ in range(80):
 		torch.save(coach.nnet.state_dict(), PATH)
 		coach.pnet.load_state_dict(torch.load(PATH))
 
-		for episode in tqdm(range(300), desc="Training"):
+		for episode in tqdm(range(100), desc="Training"):
 			data = coach.execute_episode(
 				epsilon=0.3,
 				gamma=0.80)
@@ -112,7 +114,7 @@ if __name__ == "__main__":
 		arena.player1, arena.player2 = arena.player2, arena.player1
 
 		result = arena.play_game()
-		if result == 'black':
+		if result == 'red':
 			p1_won += 1
 		else:
 			p2_won += 1
@@ -120,8 +122,9 @@ if __name__ == "__main__":
 		if p1_won > p2_won:
 			print("Accepting model :D")
 			torch.save(coach.nnet.state_dict(), PATH)
+			num_improvements += 1
 		else:
 			print("Rejecting model :(")
 			coach.nnet.load_state_dict(torch.load(PATH))
 
-		print(f"Agent wins: {p1_won}, Opponent wins {p2_won}")
+		print(f"Agent wins: {p1_won}, Prev agent wins {p2_won}, Improvements {num_improvements}")
