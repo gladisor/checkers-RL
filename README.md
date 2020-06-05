@@ -35,8 +35,6 @@ The Q function is optimized using backprop:
 ## Authors
 Tristan Shah
 
-Blade Nelson
-
 ## Credits
 Reinforcement Learning: 
 	Ritchard S Sutton
