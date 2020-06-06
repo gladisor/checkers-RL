@@ -96,6 +96,9 @@ class Checkers():
 			Board,
 			Next player color
 		"""
+		## If agent is playing itself the model will only take actions
+		# from red perspective. We need to flip the action back twards
+		# the black perspective.
 		if self.selfPlay == True and color == 'black':
 			action = self.flip_action(action)
 
@@ -107,6 +110,7 @@ class Checkers():
 		board[endCoord] = piece
 
 		## Condition to handle if move was a capture
+		# If it was a capture, the current color gets additional move
 		hasNextMove = False
 		y_diff = abs(startCoord[0] - endCoord[0])
 		x_diff = abs(startCoord[1] - endCoord[1])
@@ -226,6 +230,8 @@ class Checkers():
 		for piece in pieces:
 			possible_actions.extend(self.get_piece_actions(color, piece))
 
+		## If the agent is playing agains itself, flip black actions
+		# to be from red perspecive
 		if self.selfPlay == True and color == 'black':
 			for i in range(len(possible_actions)):
 				possible_actions[i] = self.flip_action(possible_actions[i])
@@ -233,6 +239,7 @@ class Checkers():
 		return possible_actions
 
 	def get_game_ended(self, board, color):
+		## This checks if there are any possible actions for that color
 		if not self.get_possible_actions(board, color):
 			terminal = True
 		else:
@@ -245,35 +252,23 @@ class Checkers():
 		"""
 		print(self.board)
 
-	def coord_to_vect(self, coord):
-		"""
-		Takes (y, x) coord
-		Returns onehot encoded vector representation
-		"""
-		y = np.zeros(SIZE)
-		y[coord[0]] = 1
-		x = np.zeros(SIZE)
-		x[coord[1]] = 1
-		final = np.concatenate((y, x))
-		return final
-
 	def action_to_vect(self, action):
 		"""
 		Converts action tuple of the form: (start_coord, end_coord)
 		Returns onehot vector representation of that action
 		"""
-		start = self.coord_to_vect(action[0])
-		end = self.coord_to_vect(action[1])
+		start = action[0]
+		end = action[1]
 		final = np.concatenate((start, end))
+		final = torch.tensor([start[0], start[1], end[0], end[1]]).float()/(SIZE-1)
 		return final
 
 	def make_inputs(self, state, actions):
-		state = torch.tensor(state)
+		state = torch.tensor(state).float()
 
 		X = []
 		for action in actions:
 			action_vect = self.action_to_vect(action)
-			action_vect = torch.tensor(action_vect)
 			vect = torch.cat((state, action_vect))
 			X.append(vect)
 		X = torch.stack(X).float()

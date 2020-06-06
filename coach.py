@@ -6,11 +6,15 @@ import torch
 import torch.nn as nn
 
 class Coach():
-	def __init__(self, game, nnet):
+	def __init__(self, game, nnet, lr):
 		self.game = game
 		self.nnet = nnet
 		self.pnet = nnet.__class__()
 		self.trainExamplesHistory = []
+		self.loss = nn.MSELoss()
+		self.opt = torch.optim.Adam(
+			self.nnet.parameters(),
+			lr=lr)
 
 	def execute_episode(self, epsilon, gamma):
 		self.game.reset()
@@ -61,6 +65,17 @@ class Coach():
 				break
 		return trainExamples
 
+	def learn(self, data):
+		self.opt.zero_grad()
+		## Strip the labels off of the last column of tensor
+		X = data[:,range(data.shape[1]-1)]
+		y = data[:,data.shape[1]-1].unsqueeze(dim=1)
+
+		y_hat = self.nnet(X)
+		error = self.loss(y_hat, y)
+		error.backward()
+		self.opt.step()
+		return error.item()
 
 if __name__ == "__main__":
 	# torch.set_printoptions(profile="short", sci_mode=False)
@@ -70,10 +85,8 @@ if __name__ == "__main__":
 
 	coach = Coach(
 		game=game,
-		nnet=dqn)
-
-	loss = nn.MSELoss()
-	opt = torch.optim.Adam(coach.nnet.parameters(), lr=0.0001)
+		nnet=dqn,
+		lr=0.001)
 
 	PATH = "models/test.pt"
 
