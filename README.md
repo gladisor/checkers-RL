@@ -11,6 +11,8 @@ Episodes are generated as followed:
 state, action, reward, Next state, next action ... until terminal state. The function 
 q(S, A) is the value of taking action A in state S. The value of the previous state action pair gets updated to be closer to the next reward plus a discount factor gamma multiplied by the maximum action value of the next state.
 
+TDE equation:
+
 ![](images/td.png)
 
 The Q function is optimized using backprop:
