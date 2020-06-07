@@ -10,7 +10,7 @@ class Coach():
 		self.game = game
 		self.nnet = nnet
 		self.pnet = nnet.__class__()
-		self.trainExamplesHistory = []
+
 		self.loss = nn.MSELoss()
 		self.opt = torch.optim.Adam(
 			self.nnet.parameters(),
@@ -76,68 +76,3 @@ class Coach():
 		error.backward()
 		self.opt.step()
 		return error.item()
-
-if __name__ == "__main__":
-	# torch.set_printoptions(profile="short", sci_mode=False)
-	game = Checkers()
-	## Network to be trained using coach
-	dqn = DQN()
-
-	coach = Coach(
-		game=game,
-		nnet=dqn,
-		lr=0.001)
-
-	PATH = "models/test.pt"
-
-	num_improvements = 0
-	for _ in range(80):
-		torch.save(coach.nnet.state_dict(), PATH)
-		coach.pnet.load_state_dict(torch.load(PATH))
-
-		for episode in tqdm(range(100), desc="Training"):
-			data = coach.execute_episode(
-				epsilon=0.3,
-				gamma=0.80)
-
-			data = torch.stack(data)
-			X = data[:,range(data.shape[1]-1)]
-			y = data[:,data.shape[1]-1].unsqueeze(dim=1)
-
-			opt.zero_grad()
-			y_hat = coach.nnet(X)
-			error = loss(y_hat, y)
-			error.backward()
-			opt.step()
-
-		arena = Arena(
-			player1=lambda x: torch.argmax(coach.nnet(x)),
-			player2=lambda x: torch.argmax(coach.pnet(x)),
-			game=game)
-
-		p1_won = 0
-		p2_won = 0
-
-		result = arena.play_game()
-		if result == 'red':
-			p2_won += 1
-		else:
-			p1_won += 1
-
-		arena.player1, arena.player2 = arena.player2, arena.player1
-
-		result = arena.play_game()
-		if result == 'red':
-			p1_won += 1
-		else:
-			p2_won += 1
-
-		if p1_won > p2_won:
-			print("Accepting model :D")
-			torch.save(coach.nnet.state_dict(), PATH)
-			num_improvements += 1
-		else:
-			print("Rejecting model :(")
-			coach.nnet.load_state_dict(torch.load(PATH))
-
-		print(f"Agent wins: {p1_won}, Prev agent wins {p2_won}, Improvements {num_improvements}")
